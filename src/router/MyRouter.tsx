@@ -5,6 +5,11 @@ import HomePage from "../pages/HomePage";
 import IndexPage from "../pages/IndexPage";
 import AppBarComponent from "../components/AppBarComponent";
 import { NetTypeProps } from "../utils/netType";
+import AuthPage from "../pages/AuthPage";
+import UploadPage from "../pages/UploadPage";
+import NotFound from "../pages/NotFound";
+import ImageListPage from "../pages/ImageListPage";
+import DrawerAppBar from "../components/DrawerAppBar";
 type ProviderType = {
   netType: NetTypeProps;
   setNetType: React.Dispatch<React.SetStateAction<NetTypeProps>>;
@@ -34,6 +39,7 @@ function MyRouter() {
   return (
     <MyProvider.Provider value={myValue}>
       <Router>
+        {/* <DrawerAppBar /> */}
         <AppBarComponent />
         <Routes>
           <Route path="/">
@@ -44,6 +50,18 @@ function MyRouter() {
           </Route>
           <Route path="/transcation">
             <Route index element={<TranscationPage />} />
+          </Route>
+          <Route path="/auth">
+            <Route index element={<AuthPage />} />
+          </Route>
+          <Route path="/upload">
+            <Route index element={<UploadPage />} />
+          </Route>
+          <Route path="/image-list">
+            <Route index element={<ImageListPage />} />
+          </Route>
+          <Route path="*">
+            <Route index element={<NotFound />} />
           </Route>
         </Routes>
       </Router>
