@@ -2,7 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import { firebaseConfig } from "../services/firebase_service";
 import { initializeApp } from "firebase/app";
-import { getStorage, ref, uploadBytes } from "firebase/storage";
+import {
+  StorageReference,
+  getStorage,
+  ref,
+  uploadBytes,
+  uploadBytesResumable,
+} from "firebase/storage";
 
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
@@ -13,7 +19,9 @@ import { styled } from "@mui/material/styles";
 import Button from "@mui/material/Button";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
-import { CssBaseline } from "@mui/material";
+import { CircularProgress, CssBaseline } from "@mui/material";
+import CircularWithValueLabel from "../components/MyCircleProgress";
+import MyModal from "../components/MyModal";
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -36,6 +44,9 @@ export default function UploadPage() {
   const storage = useMemo(() => getStorage(app), [app]);
   const storageRef = useMemo(() => ref(storage), [storage]);
 
+  const [uploading, setUploading] = useState(false);
+  const [progressPrecent, setProgressPrecent] = useState(0);
+
   const [file, setFile] = useState<Blob | null>();
   const [fileName, setFileName] = useState("");
 
@@ -44,9 +55,9 @@ export default function UploadPage() {
   // Points to the root reference
 
   // Points to 'images'
-  const imagesRef = ref(storageRef, "images");
-  const disabledSubmit = file === null || file === undefined;
-
+  // const imagesRef = ref(storageRef, "images");
+  const disabledSubmit = file === null || file === undefined || uploading;
+  const [imagesRef, setImagesRef] = useState<StorageReference>();
   // Points to 'images/space.jpg'
   // Note that you can use variables to create child values
 
@@ -56,14 +67,16 @@ export default function UploadPage() {
         navigate("/auth");
       } else {
         setEmail(user.email);
+        setImagesRef(ref(storageRef, user.email!.toLowerCase()));
       }
     });
-  }, [auth, navigate]);
-
+  }, [auth, navigate, storageRef]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     event.preventDefault();
     if (event.target.files) {
+      setUploading(false);
+      setProgressPrecent(0);
       const fileInstance = event.target.files[0];
       setFile(fileInstance);
       setFileName(fileInstance.name);
@@ -75,6 +88,7 @@ export default function UploadPage() {
     event: React.FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
+    if (!imagesRef) return;
     if (file === null || file === undefined) {
       setMessage("No File");
       return;
@@ -84,15 +98,76 @@ export default function UploadPage() {
     const uploadFileName =
       Intl.DateTimeFormat("en-US").format(now).replaceAll("/", "_") +
       "_" +
-      email +
-      "_" +
+      // email +
+      // "_" +
       fileName;
     const imageRef = ref(imagesRef, uploadFileName);
     try {
-      const snapshot = await uploadBytes(imageRef, file);
-      setMessage(`Upload File ${snapshot.ref.name.toUpperCase()} Success`);
+      // const snapshot = await uploadBytes(imageRef, file);
+      // setMessage(`Upload File ${snapshot.ref.name.toUpperCase()} Success`);
+
+      const uploadTask = uploadBytesResumable(imageRef, file);
+
+      // Register three observers:
+      // 1. 'state_changed' observer, called any time the state changes
+      // 2. Error observer, called on failure
+      // 3. Completion observer, called on successful completion
+      setUploading(true);
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          // Observe state change events such as progress, pause, and resume
+          // Get task progress, including the number of bytes uploaded and the total number of bytes to be uploaded
+          const progress =
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setProgressPrecent(progress);
+          // if(progressPrecent > 99.99){
+          //   setMessage(`Upload File ${fileName.toUpperCase()} Success`);
+          //   setUploading(false);
+          // }
+          // console.log(progress)
+          // <MyModal val={progress} open={uploading} />
+          switch (snapshot.state) {
+            case "canceled":
+              // setMessage("Upload is canceled");
+              setUploading(false);
+              break;
+            case "paused":
+              // console.log("Upload is paused");
+              // setMessage("Upload is paused");
+              setUploading(false);
+              break;
+            case "running":
+              // console.log("Upload is running");
+              // setMessage("Upload is running");
+              break;
+
+            case "success":
+              // setMessage(`Upload File ${fileName.toUpperCase()} Success`);
+              setUploading(false);
+              break;
+            case "error":
+              setMessage("Upload error occured!");
+              setUploading(false);
+              break;
+          }
+        },
+        (error) => {
+          // Handle unsuccessful uploads
+          setMessage(error.message);
+          setUploading(false);
+        }
+        // () => {
+        //   // Handle successful uploads on complete
+        //   // For instance, get the download URL: https://firebasestorage.googleapis.com/...
+        //   getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+        //     console.log("File available at", downloadURL);
+        //   });
+        // }
+      );
     } catch (err) {
       setMessage(String(err));
+      setUploading(false);
     }
     // const path = spaceRef.fullPath;
 
@@ -117,7 +192,6 @@ export default function UploadPage() {
         }}
       >
         <Typography>Welcome: {email}</Typography>
-   
       </Box>
       <Box sx={{ mt: "32px", display: "flex", justifyContent: "center" }}>
         <Button
@@ -156,18 +230,35 @@ export default function UploadPage() {
       </Box>
       <CssBaseline />
       <CssBaseline />
+      {/* <Box>{progressPrecent?? progressPrecent}</Box> */}
+      {/* {uploading ?? <CircularWithValueLabel val={progressPrecent} />} */}
+
+      {/* {(uploading && progressPrecent ) ?? <Box sx={{width:"200px",height:"200px"}}><CircularProgress value={progressPrecent}/></Box>}
+       */}
+      {progressPrecent > 0 ? (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            margin: "32px",
+          }}
+        >
+          <CircularWithValueLabel val={progressPrecent} />
+        </Box>
+      ) : null}
       {message ?? (
-          <Box
-            sx={{
-              m: "32px",
-              p: "32px",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            {message}
-          </Box>
+        <Box
+          sx={{
+            m: "32px",
+            p: "32px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          {message}
+        </Box>
       )}
     </Container>
   );
