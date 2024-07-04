@@ -6,7 +6,6 @@ import {
   StorageReference,
   getStorage,
   ref,
-  uploadBytes,
   uploadBytesResumable,
 } from "firebase/storage";
 
@@ -19,9 +18,8 @@ import { styled } from "@mui/material/styles";
 import Button from "@mui/material/Button";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
-import { CircularProgress, CssBaseline } from "@mui/material";
+import { CssBaseline } from "@mui/material";
 import CircularWithValueLabel from "../components/MyCircleProgress";
-import MyModal from "../components/MyModal";
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -67,7 +65,7 @@ export default function UploadPage() {
         navigate("/auth");
       } else {
         setEmail(user.email);
-        setImagesRef(ref(storageRef, user.email!.toLowerCase()));
+        setImagesRef(ref(storageRef, user.uid.toLowerCase()));
       }
     });
   }, [auth, navigate, storageRef]);
@@ -98,8 +96,8 @@ export default function UploadPage() {
     const uploadFileName =
       Intl.DateTimeFormat("en-US").format(now).replaceAll("/", "_") +
       "_" +
-      // email +
-      // "_" +
+      email +
+      "_" +
       fileName;
     const imageRef = ref(imagesRef, uploadFileName);
     try {
@@ -213,7 +211,7 @@ export default function UploadPage() {
       <Box
         component="form"
         onSubmit={handleSubmitUpload}
-        sx={{ mt: "32px", display: "flex", justifyContent: "center" }}
+        sx={{ mt: "32px", display: "flex", justifyContent: "center", flexDirection:"column" }}
       >
         <Button
           // component="label"
@@ -227,9 +225,13 @@ export default function UploadPage() {
         >
           Submit file
         </Button>
+        {message !== null  ? 
+        <Box sx={{display:"flex", justifyContent:"center", alignItems:"center",margin:"32px"}}>
+          <Typography component="h5" sx={{color:"green"}}>{message}</Typography>
+        </Box> : null
+      }
       </Box>
-      <CssBaseline />
-      <CssBaseline />
+
       {/* <Box>{progressPrecent?? progressPrecent}</Box> */}
       {/* {uploading ?? <CircularWithValueLabel val={progressPrecent} />} */}
 
@@ -247,19 +249,7 @@ export default function UploadPage() {
           <CircularWithValueLabel val={progressPrecent} />
         </Box>
       ) : null}
-      {message ?? (
-        <Box
-          sx={{
-            m: "32px",
-            p: "32px",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          {message}
-        </Box>
-      )}
+   
     </Container>
   );
 }

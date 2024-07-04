@@ -39,7 +39,8 @@ function ImageListPage() {
         navigate("/auth");
         return;
       }
-      setImagesRef(ref(storage, user.email?.toLowerCase()));
+      setImagesRef(ref(storage, user.uid?.toLowerCase()));
+      // setImagesRef(ref(storage, user.email?.toLowerCase()));
     });
   }, [auth, navigate, storage]);
 
